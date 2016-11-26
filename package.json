@@ -1,0 +1,52 @@
+{
+  "name": "aframe-bmfont-component",
+  "version": "0.1.0",
+  "description": "BMFont Text component for A-Frame.",
+  "main": "index.js",
+  "scripts": {
+    "build": "browserify example/main.js -o example/build.js",
+    "dev": "budo example/main.js:build.js --dir . --port 8000 --live --open",
+    "dist": "webpack index.js dist/aframe-bmfont-component.js && webpack -p index.js dist/aframe-bmfont-component.min.js",
+    "postpublish": "npm run dist",
+    "start": "npm run dev"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fernandojsg/aframe-bmfont-component.git"
+  },
+  "keywords": [
+    "aframe",
+    "aframe-component",
+    "aframe-vr",
+    "vr",
+    "mozvr",
+    "webvr"
+  ],
+  "author": "Fernando Serrano <fernandojsg@gmail.com.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/fernandojsg/aframe-bmfont-component/issues"
+  },
+  "homepage": "https://github.com/fernandojsg/aframe-bmfont-component#readme",
+  "devDependencies": {
+    "aframe": "^0.3.2",
+    "browserify": "^13.1.0",
+    "browserify-css": "^0.9.1",
+    "budo": "^9.0.0",
+    "eslint": "^3.3.1",
+    "eslint-config-semistandard": "^6.0.2",
+    "eslint-config-standard": "^5.3.1",
+    "eslint-plugin-promise": "^1.3.2",
+    "eslint-plugin-react": "^5.2.2",
+    "eslint-plugin-standard": "^1.3.2",
+    "inquirer": "^1.1.2",
+    "shelljs": "^0.7.3",
+    "webpack": "^1.13.2"
+  },
+  "dependencies": {
+    "eslint": "^3.11.0",
+    "load-bmfont": "^1.2.3",
+    "object-assign": "^4.1.0",
+    "three-bmfont-text": "^2.1.0"
+  }
+}

@@ -1,0 +1,89 @@
+<html>
+  <head>
+    <title>Example</title>
+    <script src="../../build.js"></script>
+  </head>
+  <body>
+    <a-scene>
+      <a-entity position="0 1.8 2">
+        <a-entity camera look-controls wasd-controls></a-entity>
+      </a-entity>
+
+      <a-entity id="opacity" position="-2 0.7 0"
+                bmfont-text="color: white; text: Animate opacity;">
+      </a-entity>
+      <a-entity id="color" position="0 0.7 0"
+                bmfont-text="color: white; text: Animate color;">
+      </a-entity>
+      <a-entity id="size" position="2 0.7 0"
+                bmfont-text="color: white; text: Animate size">
+      </a-entity>
+
+
+      <a-entity position="-3 1 0"
+                bmfont-text="anchor:left; width: 600; color: white; text: Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ut enim ad minim veniam">
+      </a-entity>
+      <a-entity position="0 1 0"
+                bmfont-text="anchor: center; width: 600; color: white; text: Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ut enim ad minim veniam">
+      </a-entity>
+      <a-entity position="3 1 0"
+                bmfont-text="anchor: right; width: 600; color: white; text: Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ut enim ad minim veniam">
+      </a-entity>
+
+
+      <a-entity position="-3 2 0"
+                bmfont-text="scale: 0.002; width: 600; color: white; text: Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ut enim ad minim veniam">
+      </a-entity>
+
+      <a-entity position="-1 2 0"
+                bmfont-text="width: 600; lineHeight: 50; letterSpacing: 5; color: white; text: Lorem ipsum dolor sit amet, consectetur adipiscing elit. Ut enim ad minim veniam">
+      </a-entity>
+
+      <a-entity position="2 2 0">
+        <a-entity position="0 0 0"
+                  bmfont-text="color: yellow; align: left; text: left; width: 250; ">
+        </a-entity>
+        <a-entity position="0 0.2 0"
+                  bmfont-text="color: red; align: right; text: right; width: 250; ">
+        </a-entity>
+        <a-entity position="0 0.4 0"
+                  bmfont-text="color: blue; align: center; text: center; width: 250; ">
+        </a-entity>
+      </a-entity>
+      <a-sky color="black"></a-sky>
+    </a-scene>
+    <script type="text/javascript">
+      // Animate opacity
+      var opacity = document.getElementById('opacity');
+      var obj = {opacity: 0};
+      var tween = new AFRAME.TWEEN.Tween(obj)
+        .to({opacity: 1}, 500)
+        .repeat( Infinity )
+        .yoyo( true )
+        .onUpdate(function () {
+          opacity.setAttribute('bmfont-text', 'opacity', obj.opacity);
+        })
+        .start();
+
+      // Animate color
+      var color = document.getElementById('color');
+      setInterval(function() {
+        var randomHexColor = '#'+Math.floor(Math.random()*16777215).toString(16);
+        color.setAttribute('bmfont-text', 'color', randomHexColor);
+      }, 1000);
+
+      // Animate size
+      var size = document.getElementById('size');
+      var objsize = {scale: 0.005};
+      var tween = new AFRAME.TWEEN.Tween(objsize)
+        .to({scale: 0.01}, 1000)
+        .repeat( Infinity )
+        .yoyo( true )
+        .onUpdate(function () {
+          size.setAttribute('bmfont-text', 'scale', objsize.scale);
+        })
+        .start();
+
+    </script>
+  </body>
+</html>
