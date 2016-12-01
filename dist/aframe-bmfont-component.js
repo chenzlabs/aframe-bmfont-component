@@ -49,25 +49,23 @@
 	  throw new Error('Component attempted to register before AFRAME was available.');
 	}
 
-	var createGeometry = __webpack_require__(1);
+	var createTextGeometry = __webpack_require__(1);
 	var loadBMFont = __webpack_require__(17);
 	var path = __webpack_require__(35);
 	var assign = __webpack_require__(14);
 	var createSDF = __webpack_require__(37);
-	var createBasic = __webpack_require__(38);
+	var createMSDF = __webpack_require__(38);
+	var createBasic = __webpack_require__(39);
 
-	 var alignments = ['left', 'right', 'center'];
+	var alignments = ['left', 'right', 'center'];
 
 	AFRAME.registerComponent('bmfont-text', {
 	  schema: {
 	    scale: {default: 0.003},
-	/*    
-	    font: {default: '' },
-	    flipY: {default: true},
+	    font: {default: ''},
 	    tabSize: {default: 4},
 	    anchor: {default: 'left', oneOf: alignments},
 	    baseline: {default: 'bottom', oneOf: alignments},
-	*/
 	    text: {type: 'string'},
 	    width: {type: 'number', default: 1000},
 	    align: {type: 'string', default: 'left', oneOf: alignments},
@@ -75,54 +73,50 @@
 	    lineHeight: {type: 'number', default: 38},
 	    fnt: {type: 'string', default: 'https://cdn.rawgit.com/bryik/aframe-bmfont-text-component/aa0655cf90f646e12c40ab4708ea90b4686cfb45/assets/DejaVu-sdf.fnt'},
 	    fntImage: {type: 'string', default: 'https://cdn.rawgit.com/bryik/aframe-bmfont-text-component/aa0655cf90f646e12c40ab4708ea90b4686cfb45/assets/DejaVu-sdf.png'},
-	    mode: {type: 'string', default: 'normal'},
+	    mode: {default: 'normal', oneOf: ['normal', 'pre', 'nowrap']},
 	    color: {type: 'color', default: '#000'},
-	    opacity: {type: 'number', default: '1.0'}
-	  },
-
-	  updateMaterial: function () {
-	    // can't use computed attribute since it gives us `false` as transparent
-	    var material = this.el.getAttribute('material');
-
-	    var data = {
-	      side: 'double', //side: threeSideFromString(material.side || 'double'),
-	      transparent: true || String(material.transparent) !== 'false',
-	      alphaTest: true || parseFloat(material.alphaTest),
-	      color: '#ffffff' || material.color,
-	      opacity: (this.data.opacity),
-	      map: this.texture
-	    }
-
-	    // set some defaults
-	    if (!isFinite(data.alphaTest)) {
-	      delete data.alphaTest;
-	    }
-	    if (!isFinite(data.opacity)) {
-	      data.opacity = 1.0;
-	    }
-
-	    // var sdf = material.shader === 'sdf';
-	    var sdf = true;
-	    var shader = sdf ? createSDF(data) : createBasic(data);
-	    this.material = new THREE.RawShaderMaterial(shader);
-	    if (this.mesh) {
-	      this.mesh.material = this.material;
-	    }
+	    opacity: {type: 'number', default: '1.0'},
+	    type: {default: 'SDF', oneOf: ['SDF', 'basic', 'MSDF']},
+	    side: {default: 'front', oneOf: ['front', 'back', 'double']},
+	    transparent: {default: true},
+	    alphaTest: {default: 0.5},
 	  },
 
 	  init: function () {
 	    this.texture = new THREE.Texture();
-	    this.geometry = createGeometry();
+	    this.texture.anisotropy = 16; // ??
+
+	    this.geometry = createTextGeometry();
 
 	    this.updateMaterial();
 	    this.mesh = new THREE.Mesh(this.geometry, this.material);
 	    this.el.setObject3D('bmfont-text', this.mesh);
+	  },
 
-	    this.el.addEventListener('componentchanged', function (ev) {
-	      if (ev.detail.name === 'material') {
-	        this.updateMaterial();
-	      }
-	    }.bind(this))
+	  update: function (oldData) {
+	    var data = this.coerceData(this.data);
+
+	    // decide whether to update font, or just text data
+	    if (!oldData || oldData.fnt !== data.fnt) {
+	      // new font, will also subsequently change data & layout
+	      this.updateFont();
+	    } else if (this.currentFont) {
+	      // new data like change of text string
+	      var font = this.currentFont;
+	      this.geometry.update(assign({}, data, { font: font }));
+	      this.updateLayout(data);
+	    }
+	    // ??
+	    this.updateMaterial(oldData.type);
+
+	    var scale = data.scale;
+	    this.mesh.scale.set(scale, -scale, scale);
+	  },
+
+	  remove: function () {
+	    this.geometry.dispose();
+	    this.geometry = null;
+	    this.el.removeObject3D('bmfont-text');
 	  },
 
 	  coerceData: function (data) {
@@ -139,168 +133,124 @@
 	    return data
 	  },
 
-	  /**
-	   * Called when component is attached and when component data changes.
-	   * Generally modifies the entity based on the data.
-	   */
-	   update: function (oldData) {
-	     var data = this.coerceData(this.data)
-	     var data = this.data;
+	  updateMaterial: function (oldType) {
 
-	     // decide whether to update font, or just text data
-	     if (!oldData || oldData.fnt !== data.fnt) {
-	       // new font, will also subsequently change data & layout
-	       this.updateFont()
-	     } else if (this.currentFont) {
-	       // new data like change of text string
-	       var font = this.currentFont
-	       this.geometry.update(assign({}, data, { font: font }))
-	       this.updateLayout(data)
-	     }
-	     // ??
-	     this.updateMaterial();
+	    if (oldType !== this.data.type) {
+	      var data = {
+	        side: threeSideFromString(this.data.side),
+	        transparent: this.data.transparent,
+	        alphaTest: this.data.alphaTest,
+	        color: this.data.color,
+	        opacity: this.data.opacity,
+	        map: this.texture
+	      }
 
-	     var scale = data.scale
-	     this.mesh.scale.set(scale, -scale, scale)
-	   },
+	      var shader;
+	      if (this.data.type === 'SDF') {
+	        shader = createSDF(data);
+	      } else if (this.data.type === 'MSDF') {
+	        shader = createMSDF(data);
+	      } else {
+	        shader = createBasic(data);
+	      }
+
+	      this.material = new THREE.RawShaderMaterial(shader);
+
+	    } else {
+	      this.material.uniforms.opacity.value = this.data.opacity;
+	      this.material.uniforms.color.value.set(this.data.color);
+	      this.material.uniforms.map.value = this.texture;
+	    }
+
+	    if (this.mesh) {
+	      this.mesh.material = this.material;
+	    }
+	  },
 
 	   updateFont: function () {
 	     if (!this.data.fnt) {
-	       console.error(new TypeError('No font specified for bmfont text!'))
-	       return
+	       console.error(new TypeError('No font specified for bmfont text!'));
+	       return;
 	     }
 
-	     var geometry = this.geometry
-	     var self = this
-	     this.mesh.visible = false
-	     console.log('Loading font');
+	     var geometry = this.geometry;
+	     var self = this;
+	     this.mesh.visible = false;
 	     loadBMFont(this.data.fnt, onLoadFont);
 
 	     var self = this;
 	     function onLoadFont (err, font) {
-	       console.log(font);
 	       if (err) {
 	         console.error(new Error('Error loading font ' + self.data.fnt +
 	           '\nMake sure the path is correct and that it points' +
-	           ' to a valid BMFont file (xml, json, fnt).\n' + err.message))
-	         return
+	           ' to a valid BMFont file (xml, json, fnt).\n' + err.message));
+	         return;
 	       }
 
 	       if (font.pages.length !== 1) {
-	         console.error(new Error('Currently only single-page bitmap fonts are supported.'))
-	         return
+	         console.error(new Error('Currently only single-page bitmap fonts are supported.'));
+	         return;
 	       }
-	       var data = self.coerceData(self.data)
+	       var data = self.coerceData(self.data);
 
 	       var src = self.data.fntImage || path.dirname(data.fnt) + '/' + font.pages[0];
 
-	       geometry.update(assign({}, data, { font: font }))
-	       self.mesh.geometry = geometry
+	       geometry.update(assign({}, data, { font: font }));
+	       self.mesh.geometry = geometry;
 
-	       var obj3d = self.el.object3D
+	       var obj3d = self.el.object3D;
 	       if (obj3d.children.indexOf(self.mesh) === -1) {
-	         self.el.object3D.add(self.mesh)
+	         self.el.object3D.add(self.mesh);
 	       }
 
-	       loadTexture(src, onLoadTexture)
-	       self.currentFont = font
-	       self.updateLayout(data)
+	       loadTexture(src, onLoadTexture);
+	       self.currentFont = font;
+	       self.updateLayout(data);
 	     }
 
 	     function onLoadTexture (image) {
-	       self.mesh.visible = true
+	       self.mesh.visible = true;
 	       if (image) {
-	         self.texture.image = image
-	         self.texture.needsUpdate = true
+	         self.texture.image = image;
+	         self.texture.needsUpdate = true;
 	       }
 	     }
 	   },
 
 	   updateLayout: function (data) {
-	     var scale = data.scale
-	     var layout = this.geometry.layout
-
-	     var x = 0
-	     var y = 0
-	     var anchor = data.anchor
-	     var baseline = data.baseline
+	     var x;
+	     var y;
+	     var scale = data.scale;
+	     var layout = this.geometry.layout;
+	     var anchor = data.anchor;
+	     var baseline = data.baseline;
 
 	     // anchors text left/center/right
-	     if (anchor === 'left') x = 0
-	     else if (anchor === 'right') x = -layout.width
-	     else if (anchor === 'center') x = -layout.width / 2
-	     else throw new TypeError('invalid anchor ' + anchor)
+	     if (anchor === 'left') {
+	       x = 0;
+	     } else if (anchor === 'right') {
+	       x = -layout.width;
+	     } else if (anchor === 'center') {
+	       x = -layout.width / 2;
+	     } else {
+	       throw new TypeError('invalid anchor ' + anchor);
+	     }
 
 	     // anchors text to top/center/bottom
-	     if (baseline === 'bottom') y = 0
-	     else if (baseline === 'top') y = -layout.height + layout.ascender
-	     else if (baseline === 'center') y = -layout.height / 2
-	     else throw new TypeError('invalid baseline ' + baseline)
+	     if (baseline === 'bottom') {
+	       y = 0;
+	     } else if (baseline === 'top') {
+	       y = -layout.height + layout.ascender;
+	     } else if (baseline === 'center') {
+	       y = -layout.height / 2;
+	     } else {
+	       throw new TypeError('invalid baseline ' + baseline);
+	     }
 
-	     this.mesh.position.x = scale * x
-	     this.mesh.position.y = scale * y
-	     this.geometry.computeBoundingSphere()
-	   },
-
-	  //update: function (oldData) {
-	/*
-	    // Entity data
-	    var el = this.el;
-	    var data = this.data;
-
-	    // Use fontLoader utility to load 'fnt' and texture
-	    fontLoader({
-	      font: data.fnt,
-	      image: data.fntImage
-	    }, start);
-
-	    function start (font, texture) {
-	      // Setup texture, should set anisotropy to user maximum...
-	      texture.needsUpdate = true;
-	      texture.anisotropy = 16;
-
-	      var options = {
-	        font: font, // the bitmap font definition
-	        text: data.text, // the string to render
-	        width: data.width,
-	        align: data.align,
-	        letterSpacing: data.letterSpacing,
-	        lineHeight: data.lineHeight,
-	        mode: data.mode
-	      };
-
-	      // Create text geometry
-	      var geometry = createText(options);
-
-	      // Use './lib/shaders/sdf' to help build a shader material
-	      var material = new THREE.RawShaderMaterial(SDFShader({
-	        map: texture,
-	        side: THREE.DoubleSide,
-	        transparent: true,
-	        color: data.color,
-	        opacity: data.opacity
-	      }));
-
-	      var text = new THREE.Mesh(geometry, material);
-
-	      // Rotate so text faces the camera
-	      text.rotation.y = Math.PI;
-
-	      // Scale text down
-	      text.scale.multiplyScalar(-0.005);
-
-	      // Register text mesh under entity's object3DMap
-	      el.setObject3D('bmfont-text', text);
-	    }
-	  },
-	*/
-
-	  remove: function () {
-	    this.geometry.dispose();
-	    this.geometry = null;
-	    this.el.removeObject3D('bmfont-text');
-	  }
-
+	     this.mesh.position.x = scale * x;
+	     this.mesh.position.y = scale * y;
+	     this.geometry.computeBoundingSphere();
+	   }
 	});
 
 	function loadTexture (src, cb) {
@@ -322,23 +272,6 @@
 	    default:
 	      throw new TypeError('unknown side string ' + str)
 	  }
-	}
-
-	/**
-	 * A utility to load a font with bmfont-load
-	 * and a texture with Three.TextureLoader()
-	 */
-	function fontLoader (opt, cb) {
-	  loadBMFont(opt.font, function (err, font) {
-	    if (err) {
-	      throw err;
-	    }
-
-	    var textureLoader = new THREE.TextureLoader();
-	    textureLoader.load(opt.image, function (texture) {
-	      cb(font, texture);
-	    });
-	  });
 	}
 
 
@@ -4937,6 +4870,71 @@
 
 /***/ },
 /* 38 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var assign = __webpack_require__(14);
+
+	module.exports = function createMSDFShader (opt) {
+	  opt = opt || {};
+	  var opacity = typeof opt.opacity === 'number' ? opt.opacity : 1;
+	  var alphaTest = typeof opt.alphaTest === 'number' ? opt.alphaTest : 0.0001;
+	  var precision = opt.precision || 'highp';
+	  var color = opt.color;
+	  var map = opt.map;
+
+	  // remove to satisfy r73
+	  delete opt.map;
+	  delete opt.color;
+	  delete opt.precision;
+	  delete opt.opacity;
+
+	  return assign({
+	    uniforms: {
+	      opacity: { type: 'f', value: opacity },
+	      map: { type: 't', value: map || new THREE.Texture() },
+	      color: { type: 'c', value: new THREE.Color(color) }
+	    },
+	    vertexShader: [
+	      'attribute vec2 uv;',
+	      'attribute vec4 position;',
+	      'uniform mat4 projectionMatrix;',
+	      'uniform mat4 modelViewMatrix;',
+	      'varying vec2 vUv;',
+	      'void main() {',
+	      'vUv = uv;',
+	      'gl_Position = projectionMatrix * modelViewMatrix * position;',
+	      '}'
+	    ].join('\n'),
+	    fragmentShader: [
+	      '#ifdef GL_OES_standard_derivatives',
+	      '#extension GL_OES_standard_derivatives : enable',
+	      '#endif',
+	      'precision ' + precision + ' float;',
+	      'uniform float opacity;',
+	      'uniform vec3 color;',
+	      'uniform sampler2D map;',
+	      'varying vec2 vUv;',
+
+	      'float median(float r, float g, float b) {',
+	      '  return max(min(r, g), min(max(r, g), b));',
+	      '}',
+
+	      'void main() {',
+	      '  vec3 sample = 1.0 - texture2D(map, vUv).rgb;',
+	      '  float sigDist = median(sample.r, sample.g, sample.b) - 0.5;',
+	      '  float alpha = clamp(sigDist/fwidth(sigDist) + 0.5, 0.0, 1.0);',
+	      '  gl_FragColor = vec4(color.xyz, alpha * opacity);',
+	      alphaTest === 0
+	        ? ''
+	        : '  if (gl_FragColor.a < ' + alphaTest + ') discard;',
+	      '}'
+	    ].join('\n')
+	  }, opt);
+	};
+
+
+/***/ },
+/* 39 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var assign = __webpack_require__(14)
