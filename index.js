@@ -3,6 +3,8 @@ if (typeof AFRAME === 'undefined') {
   throw new Error('Component attempted to register before AFRAME was available.');
 }
 
+require('./extras/text-primitive.js'); // Register experimental text primitive
+
 var createTextGeometry = require('three-bmfont-text');
 var loadBMFont = require('load-bmfont');
 var path = require('path');
