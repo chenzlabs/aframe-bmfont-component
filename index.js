@@ -12,21 +12,26 @@ var createMSDF = require('three-bmfont-text/shaders/msdf');
 var createBasic = require('three-bmfont-text/shaders/basic');
 
 var alignments = ['left', 'right', 'center'];
+var anchors = alignments;
+anchors.push('align');
+
+var DEFAULT_WIDTH = 1; // 1 matches other AFRAME default widths... 5 matches prior bmfont examples etc.
 
 AFRAME.registerComponent('bmfont-text', {
   schema: {
-    scale: {default: 0.003},
+    // scale is now determined by width and wrappixels/wrapcount... scale: {default: 0.003},
     font: {default: ''},
     tabSize: {default: 4},
-    anchor: {default: 'left', oneOf: alignments},
-    baseline: {default: 'bottom', oneOf: alignments},
+    anchor: {default: 'center', oneOf: anchors}, // center default to match primitives like plane; if 'align', null or undefined, same as align
+    baseline: {default: 'center', oneOf: alignments},
     text: {type: 'string'},
-    width: {type: 'number', default: 1000},
+    width: {type: 'number'}, // use AFRAME units i.e. meters, not arbitrary numbers... // default to geometry width, or if not present then DEFAULT_WIDTH
+    height: {type: 'number'}, // use AFRAME units i.e. meters, not arbitrary numbers... // no default, will be populated at layout
     align: {type: 'string', default: 'left', oneOf: alignments},
     letterSpacing: {type: 'number', default: 0},
-    lineHeight: {type: 'number', default: 38},
-    fnt: {type: 'string', default: 'https://cdn.rawgit.com/fernandojsg/aframe-bmfont-component/master/fonts/DejaVu-sdf.fnt'},
-    fntImage: {type: 'string', default: 'https://cdn.rawgit.com/fernandojsg/aframe-bmfont-component/master/fonts/DejaVu-sdf.png'},
+    lineHeight: {type: 'number'},  // default to font's lineHeight value
+    fnt: {type: 'string', default: 'https://cdn.rawgit.com/chenzlabs/aframe-bmfont-component/master/fonts/DejaVu-sdf.fnt'},
+    fntImage: {type: 'string'}, // default to fnt but with .fnt replaced by .png
     mode: {default: 'normal', oneOf: ['normal', 'pre', 'nowrap']},
     color: {type: 'color', default: '#000'},
     opacity: {type: 'number', default: '1.0'},
@@ -34,6 +39,8 @@ AFRAME.registerComponent('bmfont-text', {
     side: {default: 'front', oneOf: ['front', 'back', 'double']},
     transparent: {default: true},
     alphaTest: {default: 0.5},
+    wrappixels: {type: 'number'}, // if specified, units are bmfont pixels (e.g. DejaVu default is size 32) 
+    wrapcount: {type: 'number', default: 40}, // units are 0.6035 * font size e.g. about one default font character (monospace DejaVu size 32) 
   },
 
   init: function () {
@@ -57,14 +64,19 @@ AFRAME.registerComponent('bmfont-text', {
     } else if (this.currentFont) {
       // new data like change of text string
       var font = this.currentFont;
-      this.geometry.update(assign({}, data, { font: font }));
+      //this.geometry.update(assign({}, data, { font: font }));
+      var elgeo = this.el.getAttribute("geometry");
+      var width = data.width || (elgeo && elgeo.width) || DEFAULT_WIDTH;
+      var textrenderwidth = data.wrappixels || (data.wrapcount * 0.6035 * font.info.size);
+      var options = assign({}, data, { font: font, width: textrenderwidth, lineHeight: data.lineHeight || font.common.lineHeight });
+      geometry.update(options);
       this.updateLayout(data);
     }
     // ??
     this.updateMaterial(oldData.type);
 
-    var scale = data.scale;
-    this.mesh.scale.set(scale, -scale, scale);
+    var textScale = width / textrenderwidth;
+    this.mesh.scale.set(textScale, -textScale, textScale);
   },
 
   remove: function () {
@@ -147,9 +159,12 @@ AFRAME.registerComponent('bmfont-text', {
        }
        var data = self.coerceData(self.data);
 
-       var src = self.data.fntImage || path.dirname(data.fnt) + '/' + font.pages[0];
-
-       geometry.update(assign({}, data, { font: font }));
+       var src = self.data.fntImage || self.data.fnt.replace('.fnt','.png') || path.dirname(data.fnt) + '/' + font.pages[0];
+       var elgeo = self.el.getAttribute("geometry");
+       var width = data.width || (elgeo && elgeo.width) || DEFAULT_WIDTH;
+       var textrenderwidth = data.wrappixels || (data.wrapcount * 0.6035 * font.info.size);
+       var options = assign({}, data, { font: font, width: textrenderwidth, lineHeight: data.lineHeight || font.common.lineHeight });
+       geometry.update(options);
        self.mesh.geometry = geometry;
 
        var obj3d = self.el.object3D;
@@ -172,12 +187,26 @@ AFRAME.registerComponent('bmfont-text', {
    },
 
    updateLayout: function (data) {
+     var el = this.el;
+     var font = this.currentFont;
+     var geometry = this.geometry;
+     var elgeo = el.getAttribute("geometry");
+     var width = data.width || (elgeo && elgeo.width) || DEFAULT_WIDTH;
+     var textrenderwidth = data.wrappixels || (data.wrapcount * 0.6035 * font.info.size);
+     var textScale = width / textrenderwidth;
+     var height = textScale * geometry.layout.height;
+
      var x;
      var y;
-     var scale = data.scale;
      var layout = this.geometry.layout;
-     var anchor = data.anchor;
+     var anchor = data.anchor === 'align' ? data.align : data.anchor;
      var baseline = data.baseline;
+
+     // update geometry dimensions to match layout, if not specified
+     if (elgeo) {
+       if (!elgeo.width) { el.setAttribute("geometry", "width", width); }
+       el.setAttribute("geometry", "height", height);
+     }
 
      // anchors text left/center/right
      if (anchor === 'left') {
@@ -201,8 +230,10 @@ AFRAME.registerComponent('bmfont-text', {
        throw new TypeError('invalid baseline ' + baseline);
      }
 
-     this.mesh.position.x = scale * x;
-     this.mesh.position.y = scale * y;
+     this.mesh.position.x = x * textScale;
+     this.mesh.position.y = y * textScale;
+     this.mesh.position.z = 0.001; // put text slightly in front in case there is a plane or other geometry
+     this.mesh.scale.set(textScale, -textScale, textScale);
      this.geometry.computeBoundingSphere();
    }
 });

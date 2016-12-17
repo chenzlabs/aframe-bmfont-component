@@ -50,29 +50,32 @@
 	}
 
 	var createTextGeometry = __webpack_require__(1);
-	var loadBMFont = __webpack_require__(17);
-	var path = __webpack_require__(35);
-	var assign = __webpack_require__(14);
-	var createSDF = __webpack_require__(37);
-	var createMSDF = __webpack_require__(38);
-	var createBasic = __webpack_require__(39);
+	var loadBMFont = __webpack_require__(18);
+	var path = __webpack_require__(37);
+	var assign = __webpack_require__(15);
+	var createSDF = __webpack_require__(39);
+	var createMSDF = __webpack_require__(40);
+	var createBasic = __webpack_require__(41);
 
 	var alignments = ['left', 'right', 'center'];
+
+	var DEFAULT_WIDTH = 1; // 1 matches other AFRAME default widths... 5 matches prior bmfont examples etc.
 
 	AFRAME.registerComponent('bmfont-text', {
 	  schema: {
 	    scale: {default: 0.003},
 	    font: {default: ''},
 	    tabSize: {default: 4},
-	    anchor: {default: 'left', oneOf: alignments},
+	    anchor: {default: 'center', oneOf: ['left', 'right', 'center', 'align']}, // center default to match primitives like plane; if 'align', null or undefined, same as align
 	    baseline: {default: 'bottom', oneOf: alignments},
 	    text: {type: 'string'},
-	    width: {type: 'number', default: 1000},
+	    width: {type: 'number'}, // use AFRAME units i.e. meters, not arbitrary numbers... // default to geometry width, or if not present then DEFAULT_WIDTH, default: 1000},
+	    height: {type: 'number'}, // use AFRAME units i.e. meters, not arbitrary numbers... // no default, will be populated at layout
 	    align: {type: 'string', default: 'left', oneOf: alignments},
 	    letterSpacing: {type: 'number', default: 0},
-	    lineHeight: {type: 'number', default: 38},
+	    lineHeight: {type: 'number'},  // default to font's lineHeight value, default: 38},
 	    fnt: {type: 'string', default: 'https://cdn.rawgit.com/fernandojsg/aframe-bmfont-component/master/fonts/DejaVu-sdf.fnt'},
-	    fntImage: {type: 'string', default: 'https://cdn.rawgit.com/fernandojsg/aframe-bmfont-component/master/fonts/DejaVu-sdf.png'},
+	    fntImage: {type: 'string'}, // default to fnt but with .fnt replaced by .png default: 'https://cdn.rawgit.com/fernandojsg/aframe-bmfont-component/master/fonts/DejaVu-sdf.png'},
 	    mode: {default: 'normal', oneOf: ['normal', 'pre', 'nowrap']},
 	    color: {type: 'color', default: '#000'},
 	    opacity: {type: 'number', default: '1.0'},
@@ -80,6 +83,8 @@
 	    side: {default: 'front', oneOf: ['front', 'back', 'double']},
 	    transparent: {default: true},
 	    alphaTest: {default: 0.5},
+	    wrappixels: {type: 'number'}, // if specified, units are bmfont pixels (e.g. DejaVu default is size 32) 
+	    wrapcount: {type: 'number', default: 40}, // units are 0.6035 * font size e.g. about one default font character (monospace DejaVu size 32) 
 	  },
 
 	  init: function () {
@@ -193,9 +198,13 @@
 	       }
 	       var data = self.coerceData(self.data);
 
-	       var src = self.data.fntImage || path.dirname(data.fnt) + '/' + font.pages[0];
+	       var src = self.data.fntImage || self.data.fnt.replace('.fnt','.png') || path.dirname(data.fnt) + '/' + font.pages[0];
 
-	       geometry.update(assign({}, data, { font: font }));
+	       var elgeo = self.el.getAttribute("geometry");
+	       var width = data.width || (elgeo && elgeo.width) || DEFAULT_WIDTH;
+	       var textrenderwidth = data.wrappixels || (data.wrapcount * 0.6035 * font.info.size);
+	       var options = assign({}, data, { font: font, width: textrenderwidth, scale: width / textrenderwidth });
+	       geometry.update(options);
 	       self.mesh.geometry = geometry;
 
 	       var obj3d = self.el.object3D;
@@ -218,11 +227,14 @@
 	   },
 
 	   updateLayout: function (data) {
+	     var textScale = width / textrenderwidth;
+	     var height = textScale * geometry.layout.height;
+
 	     var x;
 	     var y;
-	     var scale = data.scale;
+	     var scale = textScale; //data.scale;
 	     var layout = this.geometry.layout;
-	     var anchor = data.anchor;
+	     var anchor = data.anchor === 'align' ? data.align : data.anchor;
 	     var baseline = data.baseline;
 
 	     // anchors text left/center/right
@@ -283,10 +295,10 @@
 	var inherits = __webpack_require__(7)
 	var createIndices = __webpack_require__(8)
 	var buffer = __webpack_require__(12)
-	var assign = __webpack_require__(14)
+	var assign = __webpack_require__(15)
 
-	var vertices = __webpack_require__(15)
-	var utils = __webpack_require__(16)
+	var vertices = __webpack_require__(16)
+	var utils = __webpack_require__(17)
 
 	var Base = THREE.BufferGeometry
 
@@ -1143,7 +1155,7 @@
 /***/ function(module, exports, __webpack_require__) {
 
 	/*eslint new-cap:0*/
-	var dtype = __webpack_require__(9)
+	var dtype = __webpack_require__(14)
 	module.exports = flattenVertexData
 	function flattenVertexData (data, output, offset) {
 	  if (!data) throw new TypeError('must specify data as first parameter')
@@ -1191,6 +1203,36 @@
 
 /***/ },
 /* 14 */
+/***/ function(module, exports) {
+
+	module.exports = function(dtype) {
+	  switch (dtype) {
+	    case 'int8':
+	      return Int8Array
+	    case 'int16':
+	      return Int16Array
+	    case 'int32':
+	      return Int32Array
+	    case 'uint8':
+	      return Uint8Array
+	    case 'uint16':
+	      return Uint16Array
+	    case 'uint32':
+	      return Uint32Array
+	    case 'float32':
+	      return Float32Array
+	    case 'float64':
+	      return Float64Array
+	    case 'array':
+	      return Array
+	    case 'uint8_clamped':
+	      return Uint8ClampedArray
+	  }
+	}
+
+
+/***/ },
+/* 15 */
 /***/ function(module, exports) {
 
 	'use strict';
@@ -1279,7 +1321,7 @@
 
 
 /***/ },
-/* 15 */
+/* 16 */
 /***/ function(module, exports) {
 
 	module.exports.pages = function pages (glyphs) {
@@ -1362,7 +1404,7 @@
 
 
 /***/ },
-/* 16 */
+/* 17 */
 /***/ function(module, exports) {
 
 	var itemSize = 2
@@ -1406,16 +1448,16 @@
 
 
 /***/ },
-/* 17 */
+/* 18 */
 /***/ function(module, exports, __webpack_require__) {
 
-	/* WEBPACK VAR INJECTION */(function(Buffer) {var xhr = __webpack_require__(22)
+	/* WEBPACK VAR INJECTION */(function(Buffer) {var xhr = __webpack_require__(23)
 	var noop = function(){}
-	var parseASCII = __webpack_require__(28)
-	var parseXML = __webpack_require__(29)
-	var readBinary = __webpack_require__(32)
-	var isBinaryFormat = __webpack_require__(33)
-	var xtend = __webpack_require__(4)
+	var parseASCII = __webpack_require__(30)
+	var parseXML = __webpack_require__(31)
+	var readBinary = __webpack_require__(34)
+	var isBinaryFormat = __webpack_require__(35)
+	var xtend = __webpack_require__(29)
 
 	var xml2 = (function hasXML2() {
 	  return window.XMLHttpRequest && "withCredentials" in new XMLHttpRequest
@@ -1506,13 +1548,13 @@
 	    xhr: req
 	  }, opt)
 	}
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(18).Buffer))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(19).Buffer))
 
 /***/ },
-/* 18 */
+/* 19 */
 /***/ function(module, exports, __webpack_require__) {
 
-	/* WEBPACK VAR INJECTION */(function(Buffer, global) {/*!
+	/* WEBPACK VAR INJECTION */(function(global) {/*!
 	 * The buffer module from node.js, for the browser.
 	 *
 	 * @author   Feross Aboukhadijeh <feross@feross.org> <http://feross.org>
@@ -1522,9 +1564,9 @@
 
 	'use strict'
 
-	var base64 = __webpack_require__(19)
-	var ieee754 = __webpack_require__(20)
-	var isArray = __webpack_require__(21)
+	var base64 = __webpack_require__(20)
+	var ieee754 = __webpack_require__(21)
+	var isArray = __webpack_require__(22)
 
 	exports.Buffer = Buffer
 	exports.SlowBuffer = SlowBuffer
@@ -3302,10 +3344,10 @@
 	  return val !== val // eslint-disable-line no-self-compare
 	}
 
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(18).Buffer, (function() { return this; }())))
+	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }())))
 
 /***/ },
-/* 19 */
+/* 20 */
 /***/ function(module, exports) {
 
 	'use strict'
@@ -3425,7 +3467,7 @@
 
 
 /***/ },
-/* 20 */
+/* 21 */
 /***/ function(module, exports) {
 
 	exports.read = function (buffer, offset, isLE, mLen, nBytes) {
@@ -3515,7 +3557,7 @@
 
 
 /***/ },
-/* 21 */
+/* 22 */
 /***/ function(module, exports) {
 
 	var toString = {}.toString;
@@ -3526,14 +3568,14 @@
 
 
 /***/ },
-/* 22 */
+/* 23 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
-	var window = __webpack_require__(23)
-	var isFunction = __webpack_require__(24)
-	var parseHeaders = __webpack_require__(25)
-	var xtend = __webpack_require__(4)
+	var window = __webpack_require__(24)
+	var isFunction = __webpack_require__(25)
+	var parseHeaders = __webpack_require__(26)
+	var xtend = __webpack_require__(29)
 
 	module.exports = createXHR
 	createXHR.XMLHttpRequest = window.XMLHttpRequest || noop
@@ -3619,15 +3661,6 @@
 	        return body
 	    }
 
-	    var failureResponse = {
-	                body: undefined,
-	                headers: {},
-	                statusCode: 0,
-	                method: method,
-	                url: uri,
-	                rawRequest: xhr
-	            }
-
 	    function errorFunc(evt) {
 	        clearTimeout(timeoutTimer)
 	        if(!(evt instanceof Error)){
@@ -3688,6 +3721,14 @@
 	    var sync = !!options.sync
 	    var isJson = false
 	    var timeoutTimer
+	    var failureResponse = {
+	        body: undefined,
+	        headers: {},
+	        statusCode: 0,
+	        method: method,
+	        url: uri,
+	        rawRequest: xhr
+	    }
 
 	    if ("json" in options && options.json !== false) {
 	        isJson = true
@@ -3771,7 +3812,7 @@
 
 
 /***/ },
-/* 23 */
+/* 24 */
 /***/ function(module, exports) {
 
 	/* WEBPACK VAR INJECTION */(function(global) {if (typeof window !== "undefined") {
@@ -3787,7 +3828,7 @@
 	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }())))
 
 /***/ },
-/* 24 */
+/* 25 */
 /***/ function(module, exports) {
 
 	module.exports = isFunction
@@ -3808,11 +3849,11 @@
 
 
 /***/ },
-/* 25 */
+/* 26 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var trim = __webpack_require__(26)
-	  , forEach = __webpack_require__(27)
+	var trim = __webpack_require__(27)
+	  , forEach = __webpack_require__(28)
 	  , isArray = function(arg) {
 	      return Object.prototype.toString.call(arg) === '[object Array]';
 	    }
@@ -3844,7 +3885,7 @@
 	}
 
 /***/ },
-/* 26 */
+/* 27 */
 /***/ function(module, exports) {
 
 	
@@ -3864,10 +3905,10 @@
 
 
 /***/ },
-/* 27 */
+/* 28 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var isFunction = __webpack_require__(24)
+	var isFunction = __webpack_require__(25)
 
 	module.exports = forEach
 
@@ -3916,7 +3957,32 @@
 
 
 /***/ },
-/* 28 */
+/* 29 */
+/***/ function(module, exports) {
+
+	module.exports = extend
+
+	var hasOwnProperty = Object.prototype.hasOwnProperty;
+
+	function extend() {
+	    var target = {}
+
+	    for (var i = 0; i < arguments.length; i++) {
+	        var source = arguments[i]
+
+	        for (var key in source) {
+	            if (hasOwnProperty.call(source, key)) {
+	                target[key] = source[key]
+	            }
+	        }
+	    }
+
+	    return target
+	}
+
+
+/***/ },
+/* 30 */
 /***/ function(module, exports) {
 
 	module.exports = function parseBMFontAscii(data) {
@@ -4029,11 +4095,11 @@
 	}
 
 /***/ },
-/* 29 */
+/* 31 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var parseAttributes = __webpack_require__(30)
-	var parseFromString = __webpack_require__(31)
+	var parseAttributes = __webpack_require__(32)
+	var parseFromString = __webpack_require__(33)
 
 	//In some cases element.attribute.nodeName can return
 	//all lowercase values.. so we need to map them to the correct 
@@ -4119,7 +4185,7 @@
 	}
 
 /***/ },
-/* 30 */
+/* 32 */
 /***/ function(module, exports) {
 
 	//Some versions of GlyphDesigner have a typo
@@ -4152,7 +4218,7 @@
 	}
 
 /***/ },
-/* 31 */
+/* 33 */
 /***/ function(module, exports) {
 
 	module.exports = (function xmlparser() {
@@ -4184,7 +4250,7 @@
 	})()
 
 /***/ },
-/* 32 */
+/* 34 */
 /***/ function(module, exports) {
 
 	var HEADER = [66, 77, 70]
@@ -4349,10 +4415,10 @@
 	}
 
 /***/ },
-/* 33 */
+/* 35 */
 /***/ function(module, exports, __webpack_require__) {
 
-	/* WEBPACK VAR INJECTION */(function(Buffer) {var equal = __webpack_require__(34)
+	/* WEBPACK VAR INJECTION */(function(Buffer) {var equal = __webpack_require__(36)
 	var HEADER = new Buffer([66, 77, 70, 3])
 
 	module.exports = function(buf) {
@@ -4360,13 +4426,13 @@
 	    return buf.substring(0, 3) === 'BMF'
 	  return buf.length > 4 && equal(buf.slice(0, 4), HEADER)
 	}
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(18).Buffer))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(19).Buffer))
 
 /***/ },
-/* 34 */
+/* 36 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var Buffer = __webpack_require__(18).Buffer; // for use with browserify
+	var Buffer = __webpack_require__(19).Buffer; // for use with browserify
 
 	module.exports = function (a, b) {
 	    if (!Buffer.isBuffer(a)) return undefined;
@@ -4383,7 +4449,7 @@
 
 
 /***/ },
-/* 35 */
+/* 37 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {// Copyright Joyent, Inc. and other Node contributors.
@@ -4611,10 +4677,10 @@
 	    }
 	;
 
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(36)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(38)))
 
 /***/ },
-/* 36 */
+/* 38 */
 /***/ function(module, exports) {
 
 	// shim for using process in browser
@@ -4800,10 +4866,10 @@
 
 
 /***/ },
-/* 37 */
+/* 39 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var assign = __webpack_require__(14)
+	var assign = __webpack_require__(15)
 
 	module.exports = function createSDFShader (opt) {
 	  opt = opt || {}
@@ -4869,10 +4935,10 @@
 
 
 /***/ },
-/* 38 */
+/* 40 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var assign = __webpack_require__(14);
+	var assign = __webpack_require__(15);
 
 	module.exports = function createMSDFShader (opt) {
 	  opt = opt || {};
@@ -4934,10 +5000,10 @@
 
 
 /***/ },
-/* 39 */
+/* 41 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var assign = __webpack_require__(14)
+	var assign = __webpack_require__(15)
 
 	module.exports = function createBasicShader (opt) {
 	  opt = opt || {}
