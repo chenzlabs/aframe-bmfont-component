@@ -12,7 +12,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/fernandojsg/aframe-bmfont-component.git"
+    "url": "git+https://github.com/chenzlabs/aframe-bmfont-component.git"
   },
   "keywords": [
     "aframe",
@@ -22,12 +22,12 @@
     "mozvr",
     "webvr"
   ],
-  "author": "Fernando Serrano <fernandojsg@gmail.com.com>",
+  "author": "Michael Chen <machenmusik@gmail.com>",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/fernandojsg/aframe-bmfont-component/issues"
+    "url": "https://github.com/chenzlabs/aframe-bmfont-component/issues"
   },
-  "homepage": "https://github.com/fernandojsg/aframe-bmfont-component#readme",
+  "homepage": "https://github.com/chenzlabs/aframe-bmfont-component#readme",
   "devDependencies": {
     "aframe": "^0.3.2",
     "browserify": "^13.1.0",
