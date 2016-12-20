@@ -25,6 +25,7 @@ AFRAME.registerPrimitive('a-text', extendDeep({}, meshMixin, {
     color: 'bmfont-text.color',
     opacity: 'bmfont-text.opacity',
     anchor: 'bmfont-text.anchor',
+    baseline: 'bmfont-text.baseline',
     wrapcount: 'bmfont-text.wrapcount',
     wrappixels: 'bmfont-text.wrappixels'
   }
