@@ -208,7 +208,7 @@ AFRAME.registerComponent('bmfont-text', {
      // update geometry dimensions to match layout, if not specified
      if (elgeo) {
        if (!elgeo.width) { el.setAttribute("geometry", "width", width); }
-       el.setAttribute("geometry", "height", height);
+       if (!elgeo.height) { el.setAttribute("geometry", "height", height); }
      }
 
      // anchors text left/center/right
