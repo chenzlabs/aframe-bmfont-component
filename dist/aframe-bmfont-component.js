@@ -72,7 +72,7 @@
 	    font: {default: ''},
 	    tabSize: {default: 4},
 	    anchor: {default: 'center', oneOf: anchors}, // center default to match primitives like plane; if 'align', null or undefined, same as align
-	    baseline: {default: 'center', oneOf: alignments},
+	    baseline: {default: 'center', oneOf: baselines},
 	    text: {type: 'string'},
 	    width: {type: 'number'}, // use AFRAME units i.e. meters, not arbitrary numbers... // default to geometry width, or if not present then DEFAULT_WIDTH
 	    height: {type: 'number'}, // use AFRAME units i.e. meters, not arbitrary numbers... // no default, will be populated at layout
