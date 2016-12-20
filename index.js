@@ -16,6 +16,7 @@ var createBasic = require('three-bmfont-text/shaders/basic');
 var alignments = ['left', 'right', 'center'];
 var anchors = alignments;
 anchors.push('align');
+var baselines = ['top', 'center', 'bottom'];
 
 var DEFAULT_WIDTH = 1; // 1 matches other AFRAME default widths... 5 matches prior bmfont examples etc.
 
