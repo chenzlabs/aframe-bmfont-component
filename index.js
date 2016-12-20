@@ -77,9 +77,6 @@ AFRAME.registerComponent('bmfont-text', {
     }
     // ??
     this.updateMaterial(oldData.type);
-
-    var textScale = width / textrenderwidth;
-    this.mesh.scale.set(textScale, -textScale, textScale);
   },
 
   remove: function () {
