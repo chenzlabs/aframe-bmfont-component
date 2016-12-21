@@ -66,6 +66,19 @@
 
 	var DEFAULT_WIDTH = 1; // 1 matches other AFRAME default widths... 5 matches prior bmfont examples etc.
 
+	var FONT_BASE_URL = 'https://cdn.rawgit.com/chenzlabs/aframe-bmfont-component/4b8fa074289be8ca9cb11b96557c5e7b3b763c18/fonts/';
+	var fontMap = {
+	  'default': FONT_BASE_URL + 'DejaVu-sdf.fnt',
+	  'Aileron-Semibold': FONT_BASE_URL + 'Aileron-Semibold.fnt',
+	  'DejaVu': FONT_BASE_URL + 'DejaVu-sdf.fnt',
+	  'Exo2Bold': FONT_BASE_URL + 'Exo2Bold.fnt',
+	  'Exo2SemiBold': FONT_BASE_URL + 'Exo2SemiBold.fnt',
+	  'KelsonSans': FONT_BASE_URL + 'KelsonSans.fnt',
+	  'Monoid': FONT_BASE_URL + 'Monoid.fnt',
+	  'SourceCodePro': FONT_BASE_URL + 'SourceCodePro.fnt',
+	  'mozillavr': FONT_BASE_URL + 'mozillavr.fnt',
+	};
+
 	AFRAME.registerComponent('bmfont-text', {
 	  schema: {
 	    // scale is now determined by width and wrappixels/wrapcount... scale: {default: 0.003},
@@ -79,7 +92,7 @@
 	    align: {type: 'string', default: 'left', oneOf: alignments},
 	    letterSpacing: {type: 'number', default: 0},
 	    lineHeight: {type: 'number'},  // default to font's lineHeight value
-	    fnt: {type: 'string', default: 'https://cdn.rawgit.com/chenzlabs/aframe-bmfont-component/master/fonts/DejaVu-sdf.fnt'},
+	    fnt: {type: 'string', default: 'default'},
 	    fntImage: {type: 'string'}, // default to fnt but with .fnt replaced by .png
 	    mode: {default: 'normal', oneOf: ['normal', 'pre', 'nowrap']},
 	    color: {type: 'color', default: '#000'},
@@ -179,6 +192,10 @@
 	    }
 	  },
 
+	  registerFont: function (key, url) { fontMap[key] = url; },
+
+	  lookupFont: function (keyOrUrl) { return fontMap[keyOrUrl] || keyOrUrl; },
+	  
 	   updateFont: function () {
 	     if (!this.data.fnt) {
 	       console.error(new TypeError('No font specified for bmfont text!'));
@@ -188,7 +205,7 @@
 	     var geometry = this.geometry;
 	     var self = this;
 	     this.mesh.visible = false;
-	     loadBMFont(this.data.fnt, onLoadFont);
+	     loadBMFont(this.lookupFont(this.data.fnt), onLoadFont);
 
 	     var self = this;
 	     function onLoadFont (err, font) {
@@ -205,7 +222,7 @@
 	       }
 	       var data = self.coerceData(self.data);
 
-	       var src = self.data.fntImage || self.data.fnt.replace('.fnt','.png') || path.dirname(data.fnt) + '/' + font.pages[0];
+	       var src = self.data.fntImage || self.lookupFont(self.data.fnt).replace('.fnt','.png') || path.dirname(data.fnt) + '/' + font.pages[0];
 	       var elgeo = self.el.getAttribute("geometry");
 	       var width = data.width || (elgeo && elgeo.width) || DEFAULT_WIDTH;
 	       var textrenderwidth = data.wrappixels || (data.wrapcount * 0.6035 * font.info.size);
