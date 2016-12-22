@@ -79,8 +79,8 @@ AFRAME.registerComponent('bmfont-text', {
     } else if (this.currentFont) {
       // new data like change of text string
       var font = this.currentFont;
-      var textrenderwidth = data.wrappixels || (data.wrapcount * 0.6035 * font.info.size);
-      var options = assign({}, data, { font: font, width: textrenderwidth, lineHeight: data.lineHeight || font.common.lineHeight });
+      var textRenderWidth = data.wrappixels || (data.wrapcount * 0.6035 * font.info.size);
+      var options = assign({}, data, { font: font, width: textRenderWidth, lineHeight: data.lineHeight || font.common.lineHeight });
       this.geometry.update(options);
       this.updateLayout(data);
     }
@@ -168,8 +168,8 @@ AFRAME.registerComponent('bmfont-text', {
       var data = self.coerceData(self.data);
 
       var src = self.data.fntImage || self.lookupFont(self.data.fnt).replace('.fnt', '.png') || path.dirname(data.fnt) + '/' + font.pages[0];
-      var textrenderwidth = data.wrappixels || (data.wrapcount * 0.6035 * font.info.size);
-      var options = assign({}, data, { font: font, width: textrenderwidth, lineHeight: data.lineHeight || font.common.lineHeight });
+      var textRenderWidth = data.wrappixels || (data.wrapcount * 0.6035 * font.info.size);
+      var options = assign({}, data, { font: font, width: textRenderWidth, lineHeight: data.lineHeight || font.common.lineHeight });
       geometry.update(options);
       self.mesh.geometry = geometry;
 
@@ -196,10 +196,10 @@ AFRAME.registerComponent('bmfont-text', {
     var el = this.el;
     var font = this.currentFont;
     var geometry = this.geometry;
-    var elgeo = el.getAttribute('geometry');
-    var width = data.width || (elgeo && elgeo.width) || DEFAULT_WIDTH;
-    var textrenderwidth = data.wrappixels || (data.wrapcount * 0.6035 * font.info.size);
-    var textScale = width / textrenderwidth;
+    var elGeo = el.getAttribute('geometry');
+    var width = data.width || (elGeo && elGeo.width) || DEFAULT_WIDTH;
+    var textRenderWidth = data.wrappixels || (data.wrapcount * 0.6035 * font.info.size);
+    var textScale = width / textRenderWidth;
     var height = textScale * geometry.layout.height;
     var x;
     var y;
@@ -208,9 +208,9 @@ AFRAME.registerComponent('bmfont-text', {
     var baseline = data.baseline;
 
     // update geometry dimensions to match layout, if not specified
-    if (elgeo) {
-      if (!elgeo.width) { el.setAttribute('geometry', 'width', width); }
-      if (!elgeo.height) { el.setAttribute('geometry', 'height', height); }
+    if (elGeo) {
+      if (!elGeo.width) { el.setAttribute('geometry', 'width', width); }
+      if (!elGeo.height) { el.setAttribute('geometry', 'height', height); }
     }
 
     // anchors text left/center/right
