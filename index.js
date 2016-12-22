@@ -19,7 +19,7 @@ var baselines = ['top', 'center', 'bottom'];
 
 var DEFAULT_WIDTH = 1; // 1 matches other AFRAME default widths... 5 matches prior bmfont examples etc.
 
-var FONT_BASE_URL = 'https://cdn.rawgit.com/chenzlabs/aframe-bmfont-component/4b8fa074289be8ca9cb11b96557c5e7b3b763c18/fonts/';
+var FONT_BASE_URL = 'https://cdn.rawgit.com/fernandojsg/aframe-bmfont-component/5c88edf40bbc88b336d7db6f040c3ae0d2f65aff/fonts/';
 var fontMap = {
   'default': FONT_BASE_URL + 'DejaVu-sdf.fnt',
   'Aileron-Semibold': FONT_BASE_URL + 'Aileron-Semibold.fnt',
