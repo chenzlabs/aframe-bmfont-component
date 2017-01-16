@@ -32,6 +32,9 @@ var fontMap = {
   'mozillavr': FONT_BASE_URL + 'mozillavr.fnt'
 };
 
+var loadedFontMap = {};
+var loadedTextureMap = {};
+
 AFRAME.registerComponent('bmfont-text', {
   schema: {
     // scale is now determined by width and wrappixels/wrapcount... scale: {default: 0.003},
@@ -151,6 +154,8 @@ AFRAME.registerComponent('bmfont-text', {
     var geometry = this.geometry;
     var self = this;
     this.mesh.visible = false;
+    var loadedFont = loadedFontMap[this.data.fnt];
+    if (loadedFont) { onLoadFont(loadedFont); return; }
     loadBMFont(this.lookupFont(this.data.fnt), onLoadFont);
 
     function onLoadFont (err, font) {
@@ -165,6 +170,9 @@ AFRAME.registerComponent('bmfont-text', {
         console.error(new Error('Currently only single-page bitmap fonts are supported.'));
         return;
       }
+
+      loadedFontMap[self.data.fnt] = font;
+
       var data = self.coerceData(self.data);
 
       var src = self.data.fntImage || self.lookupFont(self.data.fnt).replace('.fnt', '.png') || path.dirname(data.fnt) + '/' + font.pages[0];
@@ -244,8 +252,12 @@ AFRAME.registerComponent('bmfont-text', {
 });
 
 function loadTexture (src, cb) {
+  var loadedTexture = loadedTextureMap[src];
+  if (loadedTexture) { cb(loadedTexture); return; }
+
   var loader = new THREE.ImageLoader();
   loader.load(src, function (image) {
+    loadedTextureMap[src] = image;
     cb(image);
   }, undefined, function () {
     console.error('Could not load bmfont texture "' + src +
