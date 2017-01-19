@@ -146,9 +146,8 @@ AFRAME.registerComponent('bmfont-text', {
   lookupFont: function (keyOrUrl) { return fontMap[keyOrUrl] || keyOrUrl; },
 
   loadBMFontPromise: function (src) {
-    var self = this;
     return new Promise(function (resolve, reject) {
-      loadBMFont(self.lookupFont(src), function (err, font) {
+      loadBMFont(src, function (err, font) {
         if (err) { reject(err); } else { resolve(font); }
       });
     });
@@ -174,7 +173,8 @@ AFRAME.registerComponent('bmfont-text', {
     var geometry = this.geometry;
     var self = this;
     this.mesh.visible = false;
-    var promise = loadedFontPromises[this.data.fnt] = loadedFontPromises[this.data.fnt] || this.loadBMFontPromise(this.data.fnt);
+    var fnt = this.lookupFont(this.data.fnt);
+    var promise = loadedFontPromises[fnt] = loadedFontPromises[fnt] || this.loadBMFontPromise(fnt);
     promise.then(function (font) {
       if (font.pages.length !== 1) {
         console.error(new Error('Currently only single-page bitmap fonts are supported.'));
