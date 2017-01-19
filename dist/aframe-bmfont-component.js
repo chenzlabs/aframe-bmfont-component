@@ -60,13 +60,12 @@
 	var createBasic = __webpack_require__(42);
 
 	var alignments = ['left', 'right', 'center'];
-	var anchors = alignments;
-	anchors.push('align');
+	var anchors = ['left', 'right', 'center', 'align'];
 	var baselines = ['top', 'center', 'bottom'];
 
 	var DEFAULT_WIDTH = 1; // 1 matches other AFRAME default widths... 5 matches prior bmfont examples etc.
 
-	var FONT_BASE_URL = 'https://cdn.rawgit.com/chenzlabs/aframe-bmfont-component/4b8fa074289be8ca9cb11b96557c5e7b3b763c18/fonts/';
+	var FONT_BASE_URL = 'https://cdn.rawgit.com/fernandojsg/aframe-bmfont-component/5c88edf40bbc88b336d7db6f040c3ae0d2f65aff/fonts/';
 	var fontMap = {
 	  'default': FONT_BASE_URL + 'DejaVu-sdf.fnt',
 	  'Aileron-Semibold': FONT_BASE_URL + 'Aileron-Semibold.fnt',
@@ -76,8 +75,11 @@
 	  'KelsonSans': FONT_BASE_URL + 'KelsonSans.fnt',
 	  'Monoid': FONT_BASE_URL + 'Monoid.fnt',
 	  'SourceCodePro': FONT_BASE_URL + 'SourceCodePro.fnt',
-	  'mozillavr': FONT_BASE_URL + 'mozillavr.fnt',
+	  'mozillavr': FONT_BASE_URL + 'mozillavr.fnt'
 	};
+
+	var loadedFontPromises = {};
+	var loadedTexturePromises = {};
 
 	AFRAME.registerComponent('bmfont-text', {
 	  schema: {
@@ -101,8 +103,8 @@
 	    side: {default: 'front', oneOf: ['front', 'back', 'double']},
 	    transparent: {default: true},
 	    alphaTest: {default: 0.5},
-	    wrappixels: {type: 'number'}, // if specified, units are bmfont pixels (e.g. DejaVu default is size 32) 
-	    wrapcount: {type: 'number', default: 40}, // units are 0.6035 * font size e.g. about one default font character (monospace DejaVu size 32) 
+	    wrappixels: {type: 'number'}, // if specified, units are bmfont pixels (e.g. DejaVu default is size 32)
+	    wrapcount: {type: 'number', default: 40} // units are 0.6035 * font size e.g. about one default font character (monospace DejaVu size 32)
 	  },
 
 	  init: function () {
@@ -126,12 +128,9 @@
 	    } else if (this.currentFont) {
 	      // new data like change of text string
 	      var font = this.currentFont;
-	      //this.geometry.update(assign({}, data, { font: font }));
-	      var elgeo = this.el.getAttribute("geometry");
-	      var width = data.width || (elgeo && elgeo.width) || DEFAULT_WIDTH;
-	      var textrenderwidth = data.wrappixels || (data.wrapcount * 0.6035 * font.info.size);
-	      var options = assign({}, data, { font: font, width: textrenderwidth, lineHeight: data.lineHeight || font.common.lineHeight });
-	      geometry.update(options);
+	      var textRenderWidth = data.wrappixels || (data.wrapcount * 0.6035 * font.info.size);
+	      var options = assign({}, data, { font: font, width: textRenderWidth, lineHeight: data.lineHeight || font.common.lineHeight });
+	      this.geometry.update(options);
 	      this.updateLayout(data);
 	    }
 	    // ??
@@ -146,20 +145,19 @@
 
 	  coerceData: function (data) {
 	    // We have to coerce some data to numbers/booleans
-	    data = assign({}, data)
+	    data = assign({}, data);
 	    if (typeof data.lineHeight !== 'undefined') {
-	      data.lineHeight = parseFloat(data.lineHeight)
-	      if (!isFinite(data.lineHeight)) data.lineHeight = undefined
+	      data.lineHeight = parseFloat(data.lineHeight);
+	      if (!isFinite(data.lineHeight)) { data.lineHeight = undefined; }
 	    }
 	    if (typeof data.width !== 'undefined') {
-	      data.width = parseFloat(data.width)
-	      if (!isFinite(data.width)) data.width = undefined
+	      data.width = parseFloat(data.width);
+	      if (!isFinite(data.width)) { data.width = undefined; }
 	    }
-	    return data
+	    return data;
 	  },
 
 	  updateMaterial: function (oldType) {
-
 	    if (oldType !== this.data.type) {
 	      var data = {
 	        side: threeSideFromString(this.data.side),
@@ -168,8 +166,7 @@
 	        color: this.data.color,
 	        opacity: this.data.opacity,
 	        map: this.texture
-	      }
-
+	      };
 	      var shader;
 	      if (this.data.type === 'SDF') {
 	        shader = createSDF(data);
@@ -178,9 +175,7 @@
 	      } else {
 	        shader = createBasic(data);
 	      }
-
 	      this.material = new THREE.RawShaderMaterial(shader);
-
 	    } else {
 	      this.material.uniforms.opacity.value = this.data.opacity;
 	      this.material.uniforms.color.value.set(this.data.color);
@@ -195,130 +190,135 @@
 	  registerFont: function (key, url) { fontMap[key] = url; },
 
 	  lookupFont: function (keyOrUrl) { return fontMap[keyOrUrl] || keyOrUrl; },
-	  
-	   updateFont: function () {
-	     if (!this.data.fnt) {
-	       console.error(new TypeError('No font specified for bmfont text!'));
-	       return;
-	     }
 
-	     var geometry = this.geometry;
-	     var self = this;
-	     this.mesh.visible = false;
-	     loadBMFont(this.lookupFont(this.data.fnt), onLoadFont);
+	  loadBMFontPromise: function (src) {
+	    return new Promise(function (resolve, reject) {
+	      loadBMFont(src, function (err, font) {
+	        if (err) { reject(err); } else { resolve(font); }
+	      });
+	    });
+	  },
 
-	     var self = this;
-	     function onLoadFont (err, font) {
-	       if (err) {
-	         console.error(new Error('Error loading font ' + self.data.fnt +
-	           '\nMake sure the path is correct and that it points' +
-	           ' to a valid BMFont file (xml, json, fnt).\n' + err.message));
-	         return;
-	       }
+	  loadTexturePromise: function (src) {
+	    return new Promise(function (resolve, reject) {
+	      var loader = new THREE.ImageLoader();
+	      loader.load(src, function (image) {
+	        resolve(image);
+	      }, undefined, function () {
+	        reject(null);
+	      });
+	    });
+	  },
 
-	       if (font.pages.length !== 1) {
-	         console.error(new Error('Currently only single-page bitmap fonts are supported.'));
-	         return;
-	       }
-	       var data = self.coerceData(self.data);
+	  updateFont: function () {
+	    if (!this.data.fnt) {
+	      console.error(new TypeError('No font specified for bmfont text!'));
+	      return;
+	    }
 
-	       var src = self.data.fntImage || self.lookupFont(self.data.fnt).replace('.fnt','.png') || path.dirname(data.fnt) + '/' + font.pages[0];
-	       var elgeo = self.el.getAttribute("geometry");
-	       var width = data.width || (elgeo && elgeo.width) || DEFAULT_WIDTH;
-	       var textrenderwidth = data.wrappixels || (data.wrapcount * 0.6035 * font.info.size);
-	       var options = assign({}, data, { font: font, width: textrenderwidth, lineHeight: data.lineHeight || font.common.lineHeight });
-	       geometry.update(options);
-	       self.mesh.geometry = geometry;
+	    var geometry = this.geometry;
+	    var self = this;
+	    this.mesh.visible = false;
+	    var fnt = this.lookupFont(this.data.fnt);
+	    var promise = loadedFontPromises[fnt] = loadedFontPromises[fnt] || this.loadBMFontPromise(fnt);
+	    promise.then(function (font) {
+	      if (font.pages.length !== 1) {
+	        console.error(new Error('Currently only single-page bitmap fonts are supported.'));
+	        return;
+	      }
 
-	       var obj3d = self.el.object3D;
-	       if (obj3d.children.indexOf(self.mesh) === -1) {
-	         self.el.object3D.add(self.mesh);
-	       }
+	      var data = self.coerceData(self.data);
 
-	       loadTexture(src, onLoadTexture);
-	       self.currentFont = font;
-	       self.updateLayout(data);
-	     }
+	      var src = self.data.fntImage || self.lookupFont(self.data.fnt).replace('.fnt', '.png') || path.dirname(data.fnt) + '/' + font.pages[0];
+	      var textRenderWidth = data.wrappixels || (data.wrapcount * 0.6035 * font.info.size);
+	      var options = assign({}, data, { font: font, width: textRenderWidth, lineHeight: data.lineHeight || font.common.lineHeight });
+	      geometry.update(options);
+	      self.mesh.geometry = geometry;
 
-	     function onLoadTexture (image) {
-	       self.mesh.visible = true;
-	       if (image) {
-	         self.texture.image = image;
-	         self.texture.needsUpdate = true;
-	       }
-	     }
-	   },
+	      var obj3d = self.el.object3D;
+	      if (obj3d.children.indexOf(self.mesh) === -1) {
+	        self.el.object3D.add(self.mesh);
+	      }
 
-	   updateLayout: function (data) {
-	     var el = this.el;
-	     var font = this.currentFont;
-	     var geometry = this.geometry;
-	     var elgeo = el.getAttribute("geometry");
-	     var width = data.width || (elgeo && elgeo.width) || DEFAULT_WIDTH;
-	     var textrenderwidth = data.wrappixels || (data.wrapcount * 0.6035 * font.info.size);
-	     var textScale = width / textrenderwidth;
-	     var height = textScale * geometry.layout.height;
+	      var texpromise = loadedTexturePromises[src] || self.loadTexturePromise(src);
+	      texpromise.then(function (image) {
+	        self.mesh.visible = true;
+	        if (image) {
+	          self.texture.image = image;
+	          self.texture.needsUpdate = true;
+	        }
+	      }).catch(function () {
+	        console.error('Could not load bmfont texture "' + src +
+	          '"\nMake sure it is correctly defined in the bitmap .fnt file.');
+	      });
 
-	     var x;
-	     var y;
-	     var layout = this.geometry.layout;
-	     var anchor = data.anchor === 'align' ? data.align : data.anchor;
-	     var baseline = data.baseline;
+	      self.currentFont = font;
+	      self.updateLayout(data);
+	    }).catch(function (error) {
+	      throw new Error('Error loading font ' + self.data.fnt +
+	          '\nMake sure the path is correct and that it points' +
+	          ' to a valid BMFont file (xml, json, fnt).\n' + error.message);
+	    });
+	  },
 
-	     // update geometry dimensions to match layout, if not specified
-	     if (elgeo) {
-	       if (!elgeo.width) { el.setAttribute("geometry", "width", width); }
-	       if (!elgeo.height) { el.setAttribute("geometry", "height", height); }
-	     }
+	  updateLayout: function (data) {
+	    var el = this.el;
+	    var font = this.currentFont;
+	    var geometry = this.geometry;
+	    var elGeo = el.getAttribute('geometry');
+	    var width = data.width || (elGeo && elGeo.width) || DEFAULT_WIDTH;
+	    var textRenderWidth = data.wrappixels || (data.wrapcount * 0.6035 * font.info.size);
+	    var textScale = width / textRenderWidth;
+	    var height = textScale * geometry.layout.height;
+	    var x;
+	    var y;
+	    var layout = this.geometry.layout;
+	    var anchor = data.anchor === 'align' ? data.align : data.anchor;
+	    var baseline = data.baseline;
 
-	     // anchors text left/center/right
-	     if (anchor === 'left') {
-	       x = 0;
-	     } else if (anchor === 'right') {
-	       x = -layout.width;
-	     } else if (anchor === 'center') {
-	       x = -layout.width / 2;
-	     } else {
-	       throw new TypeError('invalid anchor ' + anchor);
-	     }
+	    // update geometry dimensions to match layout, if not specified
+	    if (elGeo) {
+	      if (!elGeo.width) { el.setAttribute('geometry', 'width', width); }
+	      if (!elGeo.height) { el.setAttribute('geometry', 'height', height); }
+	    }
 
-	     // anchors text to top/center/bottom
-	     if (baseline === 'bottom') {
-	       y = 0;
-	     } else if (baseline === 'top') {
-	       y = -layout.height + layout.ascender;
-	     } else if (baseline === 'center') {
-	       y = -layout.height / 2;
-	     } else {
-	       throw new TypeError('invalid baseline ' + baseline);
-	     }
+	    // anchors text left/center/right
+	    if (anchor === 'left') {
+	      x = 0;
+	    } else if (anchor === 'right') {
+	      x = -layout.width;
+	    } else if (anchor === 'center') {
+	      x = -layout.width / 2;
+	    } else {
+	      throw new TypeError('invalid anchor ' + anchor);
+	    }
 
-	     this.mesh.position.x = x * textScale;
-	     this.mesh.position.y = y * textScale;
-	     this.mesh.position.z = 0.001; // put text slightly in front in case there is a plane or other geometry
-	     this.mesh.scale.set(textScale, -textScale, textScale);
-	     this.geometry.computeBoundingSphere();
-	   }
+	    // anchors text to top/center/bottom
+	    if (baseline === 'bottom') {
+	      y = 0;
+	    } else if (baseline === 'top') {
+	      y = -layout.height + layout.ascender;
+	    } else if (baseline === 'center') {
+	      y = -layout.height / 2;
+	    } else {
+	      throw new TypeError('invalid baseline ' + baseline);
+	    }
+
+	    this.mesh.position.x = x * textScale;
+	    this.mesh.position.y = y * textScale;
+	    this.mesh.position.z = 0.001; // put text slightly in front in case there is a plane or other geometry
+	    this.mesh.scale.set(textScale, -textScale, textScale);
+	    this.geometry.computeBoundingSphere();
+	  }
 	});
-
-	function loadTexture (src, cb) {
-	  var loader = new THREE.ImageLoader()
-	  loader.load(src, function (image) {
-	    cb(image)
-	  }, undefined, function () {
-	    console.error('Could not load bmfont texture "' + src +
-	      '"\nMake sure it is correctly defined in the bitmap .fnt file.')
-	    cb(null)
-	  })
-	}
 
 	function threeSideFromString (str) {
 	  switch (str) {
-	    case 'double': return THREE.DoubleSide
-	    case 'front': return THREE.FrontSide
-	    case 'back': return THREE.BackSide
+	    case 'double': return THREE.DoubleSide;
+	    case 'front': return THREE.FrontSide;
+	    case 'back': return THREE.BackSide;
 	    default:
-	      throw new TypeError('unknown side string ' + str)
+	      throw new TypeError('unknown side string ' + str);
 	  }
 	}
 
