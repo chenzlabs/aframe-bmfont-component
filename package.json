@@ -33,7 +33,7 @@
     "browserify": "^13.1.0",
     "browserify-css": "^0.9.1",
     "budo": "^9.0.0",
-    "eslint": "^3.3.1",
+    "eslint": "^7.3.1",
     "eslint-config-semistandard": "^6.0.2",
     "eslint-config-standard": "^5.3.1",
     "eslint-plugin-promise": "^1.3.2",
@@ -44,7 +44,7 @@
     "webpack": "^1.13.2"
   },
   "dependencies": {
-    "eslint": "^3.11.0",
+    "eslint": "^7.3.1",
     "load-bmfont": "^1.2.3",
     "object-assign": "^4.1.0",
     "three-bmfont-text": "^2.1.0"
